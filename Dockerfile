@@ -1,4 +1,4 @@
-FROM postgres:16
+FROM postgres:16 AS BASE
 
 RUN apt-get update -y \
     && apt-get install -y --no-install-recommends --no-install-suggests \
@@ -15,7 +15,14 @@ WORKDIR /src/
 
 RUN curl -fsSL https://github.com/apache/age/releases/download/PG16%2Fv1.5.0-rc0/apache-age-1.5.0-src.tar.gz -o /tmp/apache-age-1.5.0-src.tar.gz
 RUN tar -xzvf /tmp/apache-age-1.5.0-src.tar.gz -C /src/ --strip-components=1
-RUN ls /src/
 
 RUN make && make install
+
+FROM postgres:16
+
+COPY --from=BASE /usr/lib/postgresql/16/lib/age.so /usr/lib/postgresql/16/lib/age.so
+COPY --from=BASE /usr/lib/postgresql/16/lib/bitcode /usr/lib/postgresql/16/lib/bitcode
+COPY --from=BASE /usr/share/postgresql/16/extension/age--1.5.0.sql /usr/share/postgresql/16/extension/age--1.5.0.sql
+COPY --from=BASE /usr/share/postgresql/16/extension/age.control /usr/share/postgresql/16/extension/age.control
+
 RUN echo "shared_preload_libraries='age'" >> /usr/share/postgresql/postgresql.conf.sample
